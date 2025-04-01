@@ -44,6 +44,7 @@ This project syncs Markdown (`.md`) files from a local directory to Notion, crea
     - Copy the `Internal Integration Token` provided after creation.
     - This token should be set as `NOTION_TOKEN` in your `.env` file.
 
+
 2. **Obtain the Notion Page ID**
     - Open the Notion page you want to use as the root for your Markdown sync.
     - Click on `Share` and then `Copy Link`.
@@ -51,24 +52,55 @@ This project syncs Markdown (`.md`) files from a local directory to Notion, crea
     - The `19632a12f848273458356deccd685c23b` part is your `NOTION_ROOT_PAGE_ID`.
     - Ensure your integration has access to this page by connecting it.
 
-3. **Obtain Dropbox API Access Token**
-    - Create a dropbox app [DBX Platform for Developers](https://www.dropbox.com/developers)
+
+3. **Obtain Dropbox API Access Token** (Optional if your Markdown files does not contain any images)
+    - **Step 1:** Create a dropbox app [DBX Platform for Developers](https://www.dropbox.com/developers)
         - Click **Create App**.
         - Choose an API (Select `Scoped access`).
         - Choose the type of access you need (Select `Full Dropbox`).
-        - Name your app (e.g., `notion-image-uploader`).
-    - Generate Dropbox API Access Token
-        - Go to **Permission** and select `files.content.write` , `files.content.read`, `sharing.write`
-        - Go to **OAuth 2 > Generate Access Token**.
-        - Copy the generated token.
+        - Name your app (e.g., `notion-image-uploader`) and then create.
+        - Navigate to **Settings** and copy `App key` and `App Secret`
+    - **Step 2:** Set Permissions
+        - Open your newly created app and navigate to **Permissions**.
+        - Enable the following permissions:
+            - `files.content.write`
+            - `files.content.read`
+            - `sharing.write`
+        - Click **Save**
+    - **Step 3:** To generate the authorization code, open the following link in your browser (replace YOUR_APP_KEY with
+      your actual
+      Dropbox App Key):
+      ```
+      https://www.dropbox.com/oauth2/authorize?client_id=YOUR_APP_KEY&token_access_type=offline&response_type=code
+      ```
+        - Sign in to your Dropbox account.
+        - Click **Allow**.
+        - You will be redirected to a URL with a code parameter.
+        - Copy this **authorization code** (Required for the next step).
+    - **Step 4:** To generate **Refresh Token**, run the following command in your terminal (replace AUTHORIZATION_CODE,
+      APP_KEY, APP_SECRET with your actual values):
+      ```
+      curl -X POST https://api.dropboxapi.com/oauth2/token \
+           -d grant_type=authorization_code \
+           -d code=YOUR_AUTHORIZATION_CODE \
+           -d client_id=YOUR_APP_KEY \
+           -d client_secret=YOUR_APP_SECRET
+      ```
+        - Look for `refresh_token` in the JSON response and copy its value.
+
 
 4. **Create and Update the `.env` File**
     - Copy the provided `.env.example` file and rename it to `.env`.
     - Open `.env` and add your Notion, Dropbox credentials:
-      ```sh
+      ```
+      #Notion API
       NOTION_TOKEN=<your_notion_api_token>
       NOTION_ROOT_PAGE_ID=<your_root_page_id>
-      DROPBOX_ACCESS_TOKEN=<your_dropbox_access_token>
+      
+      #Dropbox API
+      DROPBOX_REFRESH_TOKEN=<your_refresh_token>
+      DROPBOX_APP_KEY=<your_app_key>
+      DROPBOX_APP_SECRET=<your_app_secret>
       ```
     - Save the file. The script will automatically load these credentials when executed.
 

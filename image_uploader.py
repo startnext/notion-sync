@@ -2,7 +2,9 @@ import os
 import requests
 import json
 from config import (
-    DROPBOX_ACCESS_TOKEN,
+    DROPBOX_REFRESH_TOKEN,
+    DROPBOX_APP_KEY,
+    DROPBOX_APP_SECRET,
     DROPBOX_UPLOAD_URL,
     DROPBOX_SHARE_URL,
     DROPBOX_LIST_SHARED_LINKS_URL,
@@ -13,12 +15,38 @@ from config import (
     RESET,
 )
 
+def get_access_token():
+    """Fetch a new access token using the refresh token."""
+    url = "https://api.dropboxapi.com/oauth2/token"
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": DROPBOX_REFRESH_TOKEN,
+        "client_id": DROPBOX_APP_KEY,
+        "client_secret": DROPBOX_APP_SECRET,
+    }
+    response = requests.post(url, data=data)
+
+    if response.status_code == 200:
+        access_token = response.json().get("access_token")
+        return access_token
+    else:
+        print(f"{RED}Failed to refresh access token: {response.text}{RESET}")
+        return None
+
+def get_headers():
+    """Returns headers with the latest access token."""
+    access_token = get_access_token()
+    if not access_token:
+        print(f"{RED}Unable to retrieve a valid access token{RESET}")
+        return None
+    return {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+
 def check_if_file_exists(dropbox_path):
     """Checks if a file already exists in Dropbox."""
-    headers = {
-        "Authorization": f"Bearer {DROPBOX_ACCESS_TOKEN}",
-        "Content-Type": "application/json",
-    }
+    headers = get_headers()
+    if not headers:
+        return False
+
     data = json.dumps({"path": dropbox_path})
 
     response = requests.post(DROPBOX_METADATA_URL, headers=headers, data=data)
@@ -35,11 +63,14 @@ def upload_image_to_dropbox(image_path):
     image_filename = os.path.basename(image_path)
     dropbox_path = f"/notion-images/{image_filename}"
 
-    headers = {
-        "Authorization": f"Bearer {DROPBOX_ACCESS_TOKEN}",
-        "Dropbox-API-Arg": json.dumps({"path": dropbox_path, "mode": "overwrite"}),
-        "Content-Type": "application/octet-stream"
-    }
+    headers = get_headers()
+    if not headers:
+        return False
+
+    headers.update({
+            "Dropbox-API-Arg": json.dumps({"path": dropbox_path, "mode": "overwrite"}),
+            "Content-Type": "application/octet-stream"
+    })
 
     if check_if_file_exists(dropbox_path):
         print(f"{YELLOW}Image already exists in Dropbox. Fetching existing link...{RESET}")
@@ -58,10 +89,13 @@ def upload_image_to_dropbox(image_path):
 
 def get_existing_or_new_dropbox_link(file_path):
     """Retrieves an existing Dropbox shared link or creates a new one."""
-    headers = {"Authorization": f"Bearer {DROPBOX_ACCESS_TOKEN}", "Content-Type": "application/json"}
+    headers = get_headers()
+    if not headers:
+        return False
+
     data = json.dumps({"path": file_path})
 
-    #Check if a shared link already exists
+    # Check if a shared link already exists
     response = requests.post(DROPBOX_LIST_SHARED_LINKS_URL, headers=headers, data=data)
 
     if response.status_code == 200:
@@ -76,7 +110,10 @@ def get_existing_or_new_dropbox_link(file_path):
 
 def create_dropbox_shared_link(file_path):
     """Creates a new Dropbox shared link and converts it to a direct raw link."""
-    headers = {"Authorization": f"Bearer {DROPBOX_ACCESS_TOKEN}", "Content-Type": "application/json"}
+    headers = get_headers()
+    if not headers:
+        return False
+
     data = json.dumps({"path": file_path, "settings": {"requested_visibility": "public"}})
 
     response = requests.post(DROPBOX_SHARE_URL, headers=headers, data=data)

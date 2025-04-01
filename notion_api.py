@@ -238,7 +238,7 @@ def delete_existing_content(page_id):
 
     print(f"{YELLOW}Cleared old content from page (ID: {page_id}){RESET}")
 
-def create_or_update_notion_page(title, parent_id, blocks):
+def create_or_update_notion_page(title, parent_id, blocks, is_folder=False):
     """Create a new Notion page or update an existing one if found."""
     existing_page_id = search_existing_page(title, parent_id)
 
@@ -254,15 +254,15 @@ def create_or_update_notion_page(title, parent_id, blocks):
         upload_blocks_to_notion(existing_page_id, blocks)
         return existing_page_id
 
+    payload = {
+        "parent": {"page_id": parent_id},
+        "properties": {"title": {"title": [{"text": {"content": title}}]}},
+    }
+    if is_folder:
+        payload["icon"] = {"emoji": "🗂️"}
+
     print(f"{GREEN}Creating new Notion page: {title}{RESET}")
-    response = session.post(
-        "https://api.notion.com/v1/pages",
-        json={
-            "parent": {"page_id": parent_id},
-            "properties": {"title": {"title": [{"text": {"content": title}}]}},
-        },
-        headers=HEADERS,
-    )
+    response = session.post("https://api.notion.com/v1/pages", json=payload, headers=HEADERS)
     if response.status_code == 200:
         page_id = response.json().get("id")
         upload_blocks_to_notion(page_id, blocks)  # Upload content immediately
@@ -282,7 +282,7 @@ def get_or_create_folder_page(folder_path):
         else:
             folder_id = search_existing_page(folder, parent_id)
             if not folder_id:
-                folder_id = create_or_update_notion_page(folder, parent_id, [])
+                folder_id = create_or_update_notion_page(folder, parent_id, [], is_folder=True)
             if folder_id:
                 folder_cache[folder] = folder_id
                 parent_id = folder_id

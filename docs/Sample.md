@@ -4,6 +4,7 @@ This is a markdown file used for testing purposes.
 
 ## Features
 - **Headers**
+  - Blub 
 - **List**
 - **Code Blocks**
 - **Links**
@@ -38,5 +39,11 @@ console.log("Hello, World!");
 1. Item One
 2. Item Two
 3. Item Three
+
+## Image
+
+![testimage.png](img/testimage.jpg)
+
+Image generated with the help of AI (ChatGPT / DALL·E).
 
 **End of test file.**
